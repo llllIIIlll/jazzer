@@ -17,6 +17,14 @@ java_fuzz_target_test(
 )
 
 java_fuzz_target_test(
+    name = "LibraryLoad",
+    srcs = [
+        "LibraryLoad.java",
+    ],
+    target_class = "com.example.LibraryLoad",
+)
+
+java_fuzz_target_test(
     name = "ExpressionLanguageInjection",
     srcs = [
         "ExpressionLanguageInjection.java",
