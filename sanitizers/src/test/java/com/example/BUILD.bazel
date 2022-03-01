@@ -78,3 +78,14 @@ java_fuzz_target_test(
     srcs = ["RegexCanonEqInjection.java"],
     target_class = "com.example.RegexCanonEqInjection",
 )
+
+java_fuzz_target_test(
+    name = "RegexRoadblocks",
+    srcs = ["RegexRoadblocks.java"],
+    fuzzer_args = [
+        # Limit the number of runs to verify that the regex roadblocks are
+        # cleared quickly.
+        "-runs=15000",
+    ],
+    target_class = "com.example.RegexRoadblocks",
+)
