@@ -65,7 +65,7 @@ void Java_com_code_1intelligence_jazzer_runtime_FuzzerCallbacksOptimizedCritical
   __sanitizer_cov_trace_cmp4(value1, value2);
 }
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" [[maybe_unused]] JNIEXPORT void JNICALL
 JavaCritical_com_code_1intelligence_jazzer_runtime_FuzzerCallbacksOptimizedCritical_traceCmpInt(
     jint value1, jint value2, jint id) {
   __sanitizer_cov_trace_cmp4(value1, value2);
@@ -161,7 +161,7 @@ void Java_com_code_1intelligence_jazzer_runtime_FuzzerCallbacksOptimizedCritical
       env, cls, b1, b2, result, id);
 }
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" [[maybe_unused]] JNIEXPORT void JNICALL
 JavaCritical_com_code_1intelligence_jazzer_runtime_FuzzerCallbacksOptimizedCritical_traceMemcmp(
     jint b1_length, jbyte *b1, jint b2_length, jbyte *b2, jint result,
     jint id) {

@@ -84,9 +84,25 @@ Java_com_code_1intelligence_jazzer_runtime_TraceDataFlowNativeCallbacks_traceMem
   env->ReleasePrimitiveArrayCritical(b2, b2_native, JNI_ABORT);
 }
 
+extern "C" [[maybe_unused]] JNIEXPORT void JNICALL
+JavaCritical_com_code_1intelligence_jazzer_runtime_TraceDataFlowNativeCallbacks_traceMemcmp(
+    jint b1_length, jbyte *b1, jint b2_length, jbyte *b2, jint result,
+    jint id) {
+  abort();
+  __sanitizer_weak_hook_compare_bytes(idToPc(id), b1, b2, b1_length, b2_length,
+                                      result);
+}
+
 [[maybe_unused]] void
 Java_com_code_1intelligence_jazzer_runtime_TraceDataFlowNativeCallbacks_traceCmpLong(
     JNIEnv *env, jclass cls, jlong value1, jlong value2) {
+  __sanitizer_cov_trace_cmp8(value1, value2);
+}
+
+extern "C" [[maybe_unused]] JNIEXPORT void JNICALL
+JavaCritical_com_code_1intelligence_jazzer_runtime_TraceDataFlowNativeCallbacks_traceCmpLong(
+    long value1, long value2) {
+  abort();
   __sanitizer_cov_trace_cmp8(value1, value2);
 }
 
@@ -94,6 +110,13 @@ Java_com_code_1intelligence_jazzer_runtime_TraceDataFlowNativeCallbacks_traceCmp
 Java_com_code_1intelligence_jazzer_runtime_TraceDataFlowNativeCallbacks_traceCmpLongWithPc(
     JNIEnv *env, jclass cls, jlong value1, jlong value2, jint id) {
   __sanitizer_cov_trace_cmp8_with_pc(idToPc(id), value1, value2);
+}
+
+extern "C" [[maybe_unused]] JNIEXPORT void JNICALL
+JavaCritical_com_code_1intelligence_jazzer_runtime_TraceDataFlowNativeCallbacks_traceCmpLongWithPc(
+    long value1, long value2, jint id) {
+  abort();
+  __sanitizer_cov_trace_cmp8(value1, value2);
 }
 
 [[maybe_unused]] void
