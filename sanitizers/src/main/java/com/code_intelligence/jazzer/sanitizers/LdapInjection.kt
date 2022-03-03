@@ -90,9 +90,9 @@ object LdapInjection {
         )
     )
     @JvmStatic
-    fun searchLdapContext(method: MethodHandle, thisObject: Any?, args: Array<Any>, hookId: Int): Any? {
+    fun searchLdapContext(method: MethodHandle?, thisObject: Any?, args: Array<Any>, hookId: Int): Any? {
         try {
-            return method.invokeWithArguments(thisObject, *args).also {
+            return method?.invokeWithArguments(thisObject, *args).also {
                 (args[0] as? String)?.let { name ->
                     Jazzer.guideTowardsEquality(name, NAME_CHARACTERS, hookId)
                 }
