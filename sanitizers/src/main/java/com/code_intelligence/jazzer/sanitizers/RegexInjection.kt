@@ -18,8 +18,10 @@ import com.code_intelligence.jazzer.api.FuzzerSecurityIssueLow
 import com.code_intelligence.jazzer.api.HookType
 import com.code_intelligence.jazzer.api.Jazzer
 import com.code_intelligence.jazzer.api.MethodHook
+import com.code_intelligence.jazzer.api.MethodHooks
 import java.lang.invoke.MethodHandle
 import java.util.regex.Pattern
+import java.util.regex.PatternSyntaxException
 
 @Suppress("unused_parameter", "unused")
 object RegexInjection {
@@ -31,34 +33,76 @@ object RegexInjection {
      */
     private const val CANON_EQ_ALMOST_EXPLOIT = "\u0300\u0300\u0300"
 
+    /**
+     * When injected into a regex pattern, helps the fuzzer break out of quotes and character
+     * classes in order to cause a [PatternSyntaxException].
+     */
+    private const val FORCE_PATTERN_SYNTAX_EXCEPTION_PATTERN = "\\E]\\E]]]]]]"
+
     // With CANON_EQ enabled, Pattern.compile allocates an array with a size that is
     // (super-)exponential in the number of consecutive Unicode combining marks. We use a mild case
     // of this as a magic string based on which we trigger a finding.
     // Note: The fuzzer might trigger an OutOfMemoryError or NegativeArraySizeException (if the size
     // of the array overflows an int) by chance before it correctly emits this "exploit". In that
     // case, we report the original exception instead.
-    @MethodHook(
-        type = HookType.BEFORE,
-        targetClassName = "java.util.regex.Pattern",
-        targetMethod = "compile",
-        targetMethodDescriptor = "(Ljava/lang/String;I)Ljava/util/regex/Pattern;"
+    @MethodHooks(
+        MethodHook(
+            type = HookType.REPLACE,
+            targetClassName = "java.util.regex.Pattern",
+            targetMethod = "compile",
+            targetMethodDescriptor = "(Ljava/lang/String;I)Ljava/util/regex/Pattern;"
+        ),
+        MethodHook(
+            type = HookType.REPLACE,
+            targetClassName = "java.util.regex.Pattern",
+            targetMethod = "compile",
+            targetMethodDescriptor = "(Ljava/lang/String;)Ljava/util/regex/Pattern;"
+        ),
+        MethodHook(
+            type = HookType.REPLACE,
+            targetClassName = "java.util.regex.Pattern",
+            targetMethod = "matches",
+            targetMethodDescriptor = "(Ljava/lang/String;Ljava/lang/CharSequence;)Z"
+        ),
     )
     @JvmStatic
-    fun patternCompileWithFlagsHook(method: MethodHandle?, alwaysNull: Any?, args: Array<Any?>, hookId: Int) {
-        val pattern = args[0] as? String ?: return
-        val flags = args[1] as? Int ?: return
-        if (flags and Pattern.CANON_EQ == 0) return
-        if (pattern.contains(CANON_EQ_ALMOST_EXPLOIT)) {
-            Jazzer.reportFindingFromHook(
-                FuzzerSecurityIssueLow(
-                    """Regular Expression Injection with CANON_EQ
+    fun patternHook(method: MethodHandle?, alwaysNull: Any?, args: Array<Any?>, hookId: Int): Any? {
+        val pattern = args[0] as String
+        val hasCanonEqFlag = args.size >= 2 && (args[1] as? Int ?: 0) and Pattern.CANON_EQ != 0
+        if (hasCanonEqFlag) {
+            if (pattern.contains(CANON_EQ_ALMOST_EXPLOIT)) {
+                Jazzer.reportFindingFromHook(
+                    FuzzerSecurityIssueLow(
+                        """Regular Expression Injection with CANON_EQ
 When java.util.regex.Pattern.compile is used with the Pattern.CANON_EQ flag,
 every injection into the regular expression pattern can cause arbitrarily large
 memory allocations, even when wrapped with Pattern.quote(...)."""
+                    )
                 )
-            )
-        } else {
-            Jazzer.guideTowardsContainment(pattern, CANON_EQ_ALMOST_EXPLOIT, hookId)
+            } else {
+                Jazzer.guideTowardsContainment(pattern, CANON_EQ_ALMOST_EXPLOIT, hookId)
+            }
+        }
+        try {
+            return method?.invokeWithArguments(*args).also {
+                // Only submit a fuzzer hint if no exception has been thrown.
+                if (!hasCanonEqFlag) {
+                    Jazzer.guideTowardsContainment(pattern, FORCE_PATTERN_SYNTAX_EXCEPTION_PATTERN, hookId)
+                }
+            }
+        } catch (e: Exception) {
+            if (e is PatternSyntaxException) {
+                Jazzer.reportFindingFromHook(
+                    FuzzerSecurityIssueLow(
+                        """Regular Expression Injection
+Regular expression patterns that contain unescaped untrusted input can consume
+arbitrary amounts of CPU time. To properly escape the input, wrap it with
+Pattern.quote(...).""",
+                        e
+                    )
+                )
+            }
+            throw e
         }
     }
 }
